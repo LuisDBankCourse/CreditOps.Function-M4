@@ -5,48 +5,15 @@
 
 trigger:
 - main
-- dev
 
 pool:
   vmImage: ubuntu-latest
 
-variables:
-- name: imagetag
-  value: '$(Build.BuildId)'
-
 steps:
-- task: DockerCompose@1
-  displayName: "Build Docker Compose"
+- task: Docker@2
+  displayName: 'Build and push azure function'
   inputs:
-    containerregistrytype: 'Azure Container Registry'
-    azureSubscription: 'Azure subscription 1(6940fc78-e8c0-4d97-96cd-b6b824327fcc)'
-    azureContainerRegistry: '{"loginServer":"creditflowacrdvid.azurecr.io", "id" : "/subscriptions/6940fc78-e8c0-4d97-96cd-b6b824327fcc/resourceGroups/CursoDavidCreditFlow/providers/Microsoft.ContainerRegistry/registries/creditflowacrdvid"}'
-    dockerComposeFile: '**/docker-compose.yml'
-    projectName: 'creditopsfunction'
-    action: 'Build services'
-    qualifyImageNames: true
-
-    dockerComposeFileArgs: |
-      DOCKER_REGISTRY=creditflowacrdvid.azurecr.io/
-    additionalImageTags: |
-      $(imagetag)
-
-    includeLatestTag: true
-- task: DockerCompose@1
-  displayName: "Push Docker Compose to ACR"
-  inputs:
-    containerregistrytype: 'Azure Container Registry'
-    azureSubscription: 'Azure subscription 1(6940fc78-e8c0-4d97-96cd-b6b824327fcc)'
-    azureContainerRegistry: '{"loginServer":"creditflowacrdvid.azurecr.io", "id" : "/subscriptions/6940fc78-e8c0-4d97-96cd-b6b824327fcc/resourceGroups/CursoDavidCreditFlow/providers/Microsoft.ContainerRegistry/registries/creditflowacrdvid"}'
-    dockerComposeFile: '**/docker-compose.yml'
-    projectName: 'creditopsfunction'
-    action: 'Push services'
-
-    qualifyImageNames: true
-
-    dockerComposeFileArgs: |
-      DOCKER_REGISTRY=creditflowacrdvid.azurecr.io/
-    additionalImageTags: |
-      $(imagetag)
-
-    includeLatestTag: true
+    containerRegistry: 'acr-creditflow-connection'
+    repository: 'creditopsfunction'
+    command: 'buildAndPush'
+    Dockerfile: '**/Dockerfile'
