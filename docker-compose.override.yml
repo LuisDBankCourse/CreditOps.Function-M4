@@ -1,0 +1,6 @@
+services:
+  creditops.function:
+    environment:
+      - AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+    ports:
+      - "8088:8080"

@@ -1,0 +1,52 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+- dev
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+- name: imagetag
+  value: '$(Build.BuildId)'
+
+steps:
+- task: DockerCompose@1
+  displayName: "Build Docker Compose"
+  inputs:
+    containerregistrytype: 'Azure Container Registry'
+    azureSubscription: 'Azure subscription 1(6940fc78-e8c0-4d97-96cd-b6b824327fcc)'
+    azureContainerRegistry: '{"loginServer":"creditflowacrdvid.azurecr.io", "id" : "/subscriptions/6940fc78-e8c0-4d97-96cd-b6b824327fcc/resourceGroups/CursoDavidCreditFlow/providers/Microsoft.ContainerRegistry/registries/creditflowacrdvid"}'
+    dockerComposeFile: '**/docker-compose.yml'
+    projectName: 'creditopsfunction'
+    action: 'Build services'
+    qualifyImageNames: true
+
+    dockerComposeFileArgs: |
+      DOCKER_REGISTRY=creditflowacrdvid.azurecr.io/
+    additionalImageTags: |
+      $(imagetag)
+
+    includeLatestTag: true
+- task: DockerCompose@1
+  displayName: "Push Docker Compose to ACR"
+  inputs:
+    containerregistrytype: 'Azure Container Registry'
+    azureSubscription: 'Azure subscription 1(6940fc78-e8c0-4d97-96cd-b6b824327fcc)'
+    azureContainerRegistry: '{"loginServer":"creditflowacrdvid.azurecr.io", "id" : "/subscriptions/6940fc78-e8c0-4d97-96cd-b6b824327fcc/resourceGroups/CursoDavidCreditFlow/providers/Microsoft.ContainerRegistry/registries/creditflowacrdvid"}'
+    dockerComposeFile: '**/docker-compose.yml'
+    projectName: 'creditopsfunction'
+    action: 'Push services'
+
+    qualifyImageNames: true
+
+    dockerComposeFileArgs: |
+      DOCKER_REGISTRY=creditflowacrdvid.azurecr.io/
+    additionalImageTags: |
+      $(imagetag)
+
+    includeLatestTag: true

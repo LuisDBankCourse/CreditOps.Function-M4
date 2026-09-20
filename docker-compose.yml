@@ -1,0 +1,6 @@
+services:
+  creditops.function:
+    image: ${DOCKER_REGISTRY-}creditopsfunction
+    build:
+      context: .
+      dockerfile: CreditOps.Function/Dockerfile
