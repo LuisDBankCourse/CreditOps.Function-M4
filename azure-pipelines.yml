@@ -1,28 +1,83 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- main
+  - main
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
 variables:
-- name: imagetag
-  value: '$(Build.BuildId)'
+  - group: CREDITOPSFUNCTION
+
+  - name: imageRepository
+    value: 'creditops-function'
+
+  - name: imageTag
+    value: '$(Build.BuildId)'
+
+  - name: acrLoginServer
+    value: 'creditflowacrdvid.azurecr.io'
 
 steps:
-- task: Docker@2
-  displayName: 'Build and push azure function'
-  inputs:
-    containerRegistry: 'acr-creditflow-connection'
-    repository: 'creditopsfunction'
-    command: 'buildAndPush'
-    Dockerfile: '$(Build.SourcesDirectory)/CreditOps.Function/Dockerfile'
-    buildContext: '$(Build.SourcesDirectory)'
 
-    tags: |
-      $(imagetag)
-      latest
+# =================================================================
+# 1. BUILD + PUSH AZURE FUNCTION IMAGE
+# =================================================================
+
+  - task: Docker@2
+    displayName: 'Build and Push Azure Function'
+    inputs:
+      containerRegistry: 'acr-creditflow-connection'
+      repository: '$(imageRepository)'
+      command: 'buildAndPush'
+      Dockerfile: '$(Build.SourcesDirectory)/CreditOps.Function/Dockerfile'
+      buildContext: '$(Build.SourcesDirectory)'
+      tags: |
+        $(imageTag)
+        latest
+
+# =================================================================
+# 2. CREATE / UPDATE KUBERNETES SECRET
+# =================================================================
+
+  - task: KubernetesManifest@1
+    displayName: 'Create Azure Function Secrets'
+    inputs:
+      action: 'createSecret'
+      connectionType: 'kubernetesServiceConnection'
+      kubernetesServiceConnection: 'aks-creditflow-connection'
+      namespace: 'prod'
+      secretType: 'generic'
+      secretName: 'creditops-function-secrets'
+      secretArguments: >
+        --from-literal=AzureWebJobsStorage="$(AzureWebJobsStorage)"
+        --from-literal=ServiceBusConnection="$(ServiceBusConnection)"
+
+# =================================================================
+# 3. DEPLOY AZURE FUNCTION TO AKS
+# =================================================================
+
+  - task: KubernetesManifest@1
+    displayName: 'Deploy Azure Function to AKS'
+    inputs:
+      action: 'deploy'
+      connectionType: 'kubernetesServiceConnection'
+      kubernetesServiceConnection: 'aks-creditflow-connection'
+      namespace: 'prod'
+      manifests: |
+        $(Build.SourcesDirectory)/k8s/function-deployment.yml
+        $(Build.SourcesDirectory)/k8s/function-service.yml
+      containers: |
+        $(acrLoginServer)/$(imageRepository):$(imageTag)
+      rolloutStatusTimeout: '300'
+
+# =================================================================
+# 4. VALIDATE DEPLOYMENT
+# =================================================================
+
+  - task: Kubernetes@1
+    displayName: 'Validate Azure Function deployment'
+    inputs:
+      connectionType: 'Kubernetes Service Connection'
+      kubernetesServiceEndpoint: 'aks-creditflow-connection'
+      namespace: 'prod'
+      command: 'get'
+      arguments: 'deployments,pods,services -o wide'

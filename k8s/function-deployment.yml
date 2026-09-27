@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: creditops-function
+  namespace: prod
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: creditops-function
+
+  template:
+    metadata:
+      labels:
+        app: creditops-function
+
+    spec:
+      containers:
+        - name: creditops-function
+          image: creditflowacrdvid.azurecr.io/creditops-function:latest
+          env:
+            - name: FUNCTIONS_WORKER_RUNTIME
+              value: "dotnet-isolated"
+
+            - name: AzureWebJobsStorage
+              valueFrom:
+                secretKeyRef:
+                  name: creditops-function-secrets
+                  key: AzureWebJobsStorage
+
+            - name: ServiceBusConnection
+              valueFrom:
+                secretKeyRef:
+                  name: creditops-function-secrets
+                  key: ServiceBusConnection
+
+            - name: LoanApplicationQueueName
+              value: "loan-application-queue"
+
+            - name: ServiceBusQueueName
+              value: "loan-application-queue"
+
+            - name: Service__CustomerApi
+              value: "http://customer-service/"
+
+            - name: Service__CreditProductsApi
+              value: "http://74.151.171.94/"
+
+            - name: Service__LoanApplicationApi
+              value: "http://134.33.228.158/"
+
+            - name: Service__RiskScoringApi
+              value: "http://riskscoring-service/"
+
+            - name: Services__NotificationApi
+              value: "http://notification-service/"
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
